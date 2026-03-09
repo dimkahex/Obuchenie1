@@ -1,0 +1,142 @@
+# Локальный запуск для разработки
+version: "3.8"
+
+services:
+  postgres-users:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: users
+      POSTGRES_PASSWORD: userspass
+      POSTGRES_DB: users
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/init-users.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U users"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-catalog:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: catalog
+      POSTGRES_PASSWORD: catalogpass
+      POSTGRES_DB: catalog
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./db/init-catalog.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U catalog"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-orders:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: orders
+      POSTGRES_PASSWORD: orderspass
+      POSTGRES_DB: orders
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./db/init-orders.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orders"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build: ./services/auth
+    ports:
+      - "8081:8081"
+    environment:
+      JWT_SECRET: dev-secret
+    depends_on:
+      - redis
+
+  user-service:
+    build: ./services/user
+    ports:
+      - "8082:8082"
+    environment:
+      DATABASE_URL: postgres://users:userspass@postgres-users:5432/users
+    depends_on:
+      postgres-users:
+        condition: service_healthy
+
+  catalog-service:
+    build: ./services/catalog
+    ports:
+      - "8083:8083"
+    environment:
+      DATABASE_URL: postgres://catalog:catalogpass@postgres-catalog:5432/catalog
+    depends_on:
+      postgres-catalog:
+        condition: service_healthy
+
+  order-service:
+    build: ./services/order
+    ports:
+      - "8084:8084"
+    environment:
+      DATABASE_URL: postgres://orders:orderspass@postgres-orders:5432/orders
+      CATALOG_SERVICE_URL: http://catalog-service:8083
+      NOTIFICATION_SERVICE_URL: http://notification-service:8085
+    depends_on:
+      - catalog-service
+      - notification-service
+      postgres-orders:
+        condition: service_healthy
+
+  notification-service:
+    build: ./services/notification
+    ports:
+      - "8085:8085"
+    environment:
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      AUTH_SERVICE_URL: http://auth-service:8081
+      USER_SERVICE_URL: http://user-service:8082
+      CATALOG_SERVICE_URL: http://catalog-service:8083
+      ORDER_SERVICE_URL: http://order-service:8084
+      NOTIFICATION_SERVICE_URL: http://notification-service:8085
+    depends_on:
+      - auth-service
+      - user-service
+      - catalog-service
+      - order-service
+      - notification-service
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:8080
+    ports:
+      - "3000:8080"
+    depends_on:
+      - api-gateway
