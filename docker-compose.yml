@@ -148,5 +148,6 @@ services:
     environment:
       GATEWAY_URL: http://api-gateway:8080
       INTERVAL_MS: "30000"
+      REQUEST_TIMEOUT_MS: "25000"
     depends_on:
       - api-gateway

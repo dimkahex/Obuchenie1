@@ -7,9 +7,11 @@ const axios = require('axios');
 const GATEWAY_URL = process.env.GATEWAY_URL || 'http://api-gateway:8080';
 const INTERVAL_MS = parseInt(process.env.INTERVAL_MS || '30000', 10); // 30 сек
 
+const REQUEST_TIMEOUT_MS = parseInt(process.env.REQUEST_TIMEOUT_MS || '25000', 10);
+
 const api = axios.create({
   baseURL: GATEWAY_URL,
-  timeout: 10000,
+  timeout: REQUEST_TIMEOUT_MS,
   headers: { 'User-Agent': 'synthetic-load/1.0' },
 });
 
@@ -72,7 +74,7 @@ async function runCycle() {
   }
 }
 
-log('synthetic_load_started', { gateway: GATEWAY_URL, interval_ms: INTERVAL_MS });
+log('synthetic_load_started', { gateway: GATEWAY_URL, interval_ms: INTERVAL_MS, request_timeout_ms: REQUEST_TIMEOUT_MS });
 
 setInterval(runCycle, INTERVAL_MS);
 runCycle(); // первый цикл сразу
