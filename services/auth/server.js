@@ -9,6 +9,14 @@ const JWT_SECRET = process.env.JWT_SECRET || 'demo-secret-change-in-production';
 app.use(cors());
 app.use(express.json());
 
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    console.log(JSON.stringify({ ts: new Date().toISOString(), service: 'auth', method: req.method, path: req.path, status: res.statusCode, duration_ms: Date.now() - start }));
+  });
+  next();
+});
+
 // In-memory "users" for demo (in real app - DB)
 const users = new Map([
   ['admin', { password: 'admin', role: 'admin' }],

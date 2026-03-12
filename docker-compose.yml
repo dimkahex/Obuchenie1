@@ -137,8 +137,16 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: http://localhost:8080
+        VITE_API_URL: http://localhost:8080/api
     ports:
       - "3000:8080"
+    depends_on:
+      - api-gateway
+
+  synthetic-load:
+    build: ./synthetic-load
+    environment:
+      GATEWAY_URL: http://api-gateway:8080
+      INTERVAL_MS: "30000"
     depends_on:
       - api-gateway

@@ -15,6 +15,24 @@ const NOTIFICATION_URL = process.env.NOTIFICATION_SERVICE_URL || 'http://notific
 app.use(cors());
 app.use(express.json());
 
+// Структурированные логи для мониторинга (ELK, Loki, Prometheus tail)
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const log = JSON.stringify({
+      ts: new Date().toISOString(),
+      service: 'api-gateway',
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      duration_ms: duration,
+    });
+    console.log(log);
+  });
+  next();
+});
+
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'api-gateway' }));
 
 app.get('/api/health', async (req, res) => {

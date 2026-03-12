@@ -14,6 +14,14 @@ const NOTIFICATION_URL = process.env.NOTIFICATION_SERVICE_URL || 'http://notific
 app.use(cors());
 app.use(express.json());
 
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    console.log(JSON.stringify({ ts: new Date().toISOString(), service: 'order', method: req.method, path: req.path, status: res.statusCode, duration_ms: Date.now() - start }));
+  });
+  next();
+});
+
 app.get('/health', async (req, res) => {
   try {
     await pool.query('SELECT 1');
