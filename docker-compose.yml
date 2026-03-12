@@ -1,5 +1,5 @@
 # Локальный запуск для разработки
-version: "3.8"
+# Атрибут version в новых Docker Compose не нужен и выдаёт предупреждение — убран
 
 services:
   postgres-users:
