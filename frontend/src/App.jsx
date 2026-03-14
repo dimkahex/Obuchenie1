@@ -330,7 +330,7 @@ export default function App() {
 
       {/* Модальное окно входа */}
       {loginModalOpen && (
-        <div className="modal-overlay" onClick={() => setLoginModalOpen(false)} role="dialog" aria-modal="true">
+        <div className="modal-overlay" role="dialog" aria-modal="true">
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3>Вход в аккаунт</h3>
             <form onSubmit={handleLogin}>
@@ -371,7 +371,7 @@ export default function App() {
 
       {/* Модальное окно регистрации */}
       {registerModalOpen && (
-        <div className="modal-overlay" onClick={() => setRegisterModalOpen(false)} role="dialog" aria-modal="true">
+        <div className="modal-overlay" role="dialog" aria-modal="true">
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3>Регистрация</h3>
             <form onSubmit={handleRegister}>
