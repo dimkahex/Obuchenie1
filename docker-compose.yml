@@ -136,8 +136,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        VITE_API_URL: http://localhost:8080/api
+      # VITE_API_URL не задаём — фронт сам подставит текущий хост:8080 (работает по IP VM)
     ports:
       - "3000:8080"
     depends_on:

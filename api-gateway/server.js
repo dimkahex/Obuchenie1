@@ -55,7 +55,30 @@ app.get('/api/health', async (req, res) => {
   });
 });
 
-app.use('/api/auth', createProxyMiddleware({ target: AUTH_URL, pathRewrite: { '^/api/auth': '' } }));
+// Логин и регистрация — прямой прокси с телом (body гарантированно доходит до auth-service)
+async function authProxy(postPath, req, res) {
+  try {
+    const { data } = await axios.post(`${AUTH_URL}${postPath}`, req.body || {}, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 5000,
+    });
+    res.json(data);
+  } catch (err) {
+    const status = err.response?.status || 500;
+    const body = err.response?.data || { error: err.message };
+    res.status(status).json(body);
+  }
+}
+
+app.post('/api/auth/login', (req, res) => authProxy('/login', req, res));
+app.post('/api/auth/register', (req, res) => authProxy('/register', req, res));
+
+// Остальные запросы к auth (verify и т.д.) — через прокси
+app.use('/api/auth', createProxyMiddleware({
+  target: AUTH_URL,
+  pathRewrite: { '^/api/auth': '' },
+  changeOrigin: true,
+}));
 app.use('/api/users', createProxyMiddleware({ target: USER_URL, pathRewrite: { '^/api/users': '/users' } }));
 app.use('/api/products', createProxyMiddleware({ target: CATALOG_URL, pathRewrite: { '^/api/products': '/products' } }));
 app.use('/api/orders', createProxyMiddleware({ target: ORDER_URL, pathRewrite: { '^/api/orders': '/orders' } }));

@@ -17,19 +17,45 @@ app.use((req, res, next) => {
   next();
 });
 
-// In-memory "users" for demo (in real app - DB)
+// In-memory пользователи (логин/пароль/email). В проде — БД и хэш пароля.
 const users = new Map([
-  ['admin', { password: 'admin', role: 'admin' }],
-  ['user1', { password: 'user1', role: 'user' }],
+  ['admin', { password: 'admin', email: 'admin@example.com', role: 'admin' }],
+  ['user1', { password: 'user1', email: 'user1@example.com', role: 'user' }],
 ]);
 
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'auth' }));
 
+// Регистрация: имя пользователя, пароль (любая длина), email (необязательно)
+app.post('/register', (req, res) => {
+  const body = req.body || {};
+  const username = body.username != null ? String(body.username).trim() : '';
+  const password = body.password != null ? String(body.password) : '';
+  const email = body.email != null ? String(body.email).trim() : '';
+
+  if (!username) {
+    return res.status(400).json({ error: 'Введите имя пользователя' });
+  }
+  if (!password) {
+    return res.status(400).json({ error: 'Введите пароль' });
+  }
+  if (users.has(username)) {
+    return res.status(409).json({ error: 'Пользователь с таким именем уже существует' });
+  }
+
+  users.set(username, { password, email: email || null, role: 'user' });
+  res.status(201).json({ message: 'Регистрация успешна', username });
+});
+
 app.post('/login', (req, res) => {
-  const { username, password } = req.body || {};
+  const body = req.body || {};
+  const username = body.username != null ? String(body.username).trim() : '';
+  const password = body.password != null ? String(body.password) : '';
+  if (!username) {
+    return res.status(400).json({ error: 'Введите логин' });
+  }
   const u = users.get(username);
   if (!u || u.password !== password) {
-    return res.status(401).json({ error: 'Invalid credentials' });
+    return res.status(401).json({ error: 'Неверный логин или пароль' });
   }
   const token = jwt.sign(
     { sub: username, role: u.role },

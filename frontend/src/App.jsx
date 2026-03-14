@@ -37,6 +37,9 @@ export default function App() {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('catalog');
   const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [registerModalOpen, setRegisterModalOpen] = useState(false);
+  const [registerForm, setRegisterForm] = useState({ username: '', password: '', email: '' });
+  const [successMsg, setSuccessMsg] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -77,6 +80,21 @@ export default function App() {
         setLoginModalOpen(false);
       })
       .catch((e) => setError(e.response?.data?.error || 'Ошибка входа'));
+  };
+
+  const handleRegister = (e) => {
+    e.preventDefault();
+    setError('');
+    API.post('/auth/register', registerForm)
+      .then(() => {
+        setRegisterModalOpen(false);
+        setRegisterForm({ username: '', password: '', email: '' });
+        setLoginModalOpen(true);
+        setError('');
+        setSuccessMsg('Регистрация успешна. Войдите под новым пользователем.');
+        setTimeout(() => setSuccessMsg(''), 5000);
+      })
+      .catch((e) => setError(e.response?.data?.error || 'Ошибка регистрации'));
   };
 
   const handleLogout = () => {
@@ -143,9 +161,14 @@ export default function App() {
                 <button type="button" className="btn-logout" onClick={handleLogout}>Выйти</button>
               </div>
             ) : (
-              <button type="button" className="btn-login" onClick={() => setLoginModalOpen(true)}>
-                Войти
-              </button>
+              <>
+                <button type="button" className="btn-login" onClick={() => setRegisterModalOpen(true)}>
+                  Регистрация
+                </button>
+                <button type="button" className="btn-login" onClick={() => setLoginModalOpen(true)}>
+                  Войти
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -171,6 +194,12 @@ export default function App() {
         <div className="banner-error" role="alert">
           {error}
           <button type="button" className="banner-close" onClick={() => setError('')}>×</button>
+        </div>
+      )}
+      {successMsg && (
+        <div className="banner-success" role="status">
+          {successMsg}
+          <button type="button" className="banner-close" onClick={() => setSuccessMsg('')}>×</button>
         </div>
       )}
 
@@ -306,12 +335,13 @@ export default function App() {
             <h3>Вход в аккаунт</h3>
             <form onSubmit={handleLogin}>
               <div className="form-group">
-                <label>Логин</label>
+                <label>Имя пользователя (логин)</label>
                 <input
                   type="text"
                   value={loginForm.username}
                   onChange={(e) => setLoginForm((f) => ({ ...f, username: e.target.value }))}
                   autoComplete="username"
+                  placeholder="admin"
                 />
               </div>
               <div className="form-group">
@@ -321,11 +351,71 @@ export default function App() {
                   value={loginForm.password}
                   onChange={(e) => setLoginForm((f) => ({ ...f, password: e.target.value }))}
                   autoComplete="current-password"
+                  placeholder="••••••••"
                 />
               </div>
+              <p className="modal-switch">
+                Нет аккаунта?{' '}
+                <button type="button" className="link-btn" onClick={() => { setLoginModalOpen(false); setRegisterModalOpen(true); }}>
+                  Зарегистрироваться
+                </button>
+              </p>
               <div className="modal-actions">
                 <button type="button" className="btn-close-modal" onClick={() => setLoginModalOpen(false)}>Отмена</button>
                 <button type="submit" className="btn btn-primary">Войти</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно регистрации */}
+      {registerModalOpen && (
+        <div className="modal-overlay" onClick={() => setRegisterModalOpen(false)} role="dialog" aria-modal="true">
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Регистрация</h3>
+            <form onSubmit={handleRegister}>
+              <div className="form-group">
+                <label>Имя пользователя</label>
+                <input
+                  type="text"
+                  value={registerForm.username}
+                  onChange={(e) => setRegisterForm((f) => ({ ...f, username: e.target.value }))}
+                  autoComplete="username"
+                  placeholder="Придумайте логин"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Пароль</label>
+                <input
+                  type="password"
+                  value={registerForm.password}
+                  onChange={(e) => setRegisterForm((f) => ({ ...f, password: e.target.value }))}
+                  autoComplete="new-password"
+                  placeholder="Любая длина"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Email (необязательно)</label>
+                <input
+                  type="email"
+                  value={registerForm.email}
+                  onChange={(e) => setRegisterForm((f) => ({ ...f, email: e.target.value }))}
+                  autoComplete="email"
+                  placeholder="example@mail.ru"
+                />
+              </div>
+              <p className="modal-switch">
+                Уже есть аккаунт?{' '}
+                <button type="button" className="link-btn" onClick={() => { setRegisterModalOpen(false); setLoginModalOpen(true); }}>
+                  Войти
+                </button>
+              </p>
+              <div className="modal-actions">
+                <button type="button" className="btn-close-modal" onClick={() => setRegisterModalOpen(false)}>Отмена</button>
+                <button type="submit" className="btn btn-primary">Зарегистрироваться</button>
               </div>
             </form>
           </div>
@@ -354,7 +444,10 @@ export default function App() {
               {token ? (
                 <button type="button" className="footer-link" onClick={handleLogout}>Выйти</button>
               ) : (
-                <button type="button" className="footer-link" onClick={() => setLoginModalOpen(true)}>Войти</button>
+                <>
+                  <button type="button" className="footer-link" onClick={() => setRegisterModalOpen(true)}>Регистрация</button>
+                  <button type="button" className="footer-link" onClick={() => setLoginModalOpen(true)}>Войти</button>
+                </>
               )}
             </div>
           </div>
