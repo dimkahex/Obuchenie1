@@ -2,15 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { API } from './api';
 import './App.css';
 
-const HERO_IMAGE = 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&q=80';
-const PRODUCT_IMAGE = (id) => `https://picsum.photos/400/300?random=${id}`;
+const PRODUCT_IMAGE = (id) => `https://picsum.photos/400/400?random=${id}`;
 
 function ProductImage({ id, name }) {
   const [err, setErr] = React.useState(false);
   if (err) {
     return (
       <div className="product-card-image product-card-image-fallback" aria-hidden>
-        <span>📦</span>
+        📦
       </div>
     );
   }
@@ -37,7 +36,8 @@ export default function App() {
   const [orderForm, setOrderForm] = useState({ user_id: 1, product_id: 1, quantity: 1 });
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('catalog');
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const t = localStorage.getItem('token');
@@ -51,7 +51,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    API.get('/health').then((r) => setHealth(r.data)).catch(() => setHealth({ error: 'Gateway unreachable' }));
+    API.get('/health').then((r) => setHealth(r.data)).catch(() => setHealth({ error: 'Нет связи' }));
   }, []);
 
   useEffect(() => {
@@ -74,6 +74,7 @@ export default function App() {
         setToken(r.data.token);
         setUser({ username: r.data.username, role: r.data.role });
         localStorage.setItem('token', r.data.token);
+        setLoginModalOpen(false);
       })
       .catch((e) => setError(e.response?.data?.error || 'Ошибка входа'));
   };
@@ -96,207 +97,269 @@ export default function App() {
         loadEvents();
         if (productId == null) setOrderForm((f) => ({ ...f, quantity: 1 }));
       })
-      .catch((e) => setError(e.response?.data?.error || 'Ошибка создания заказа'));
+      .catch((e) => setError(e.response?.data?.error || 'Ошибка заказа'));
   };
 
-  const nav = [
-    { id: 'catalog', label: 'Каталог', icon: '📦' },
-    { id: 'orders', label: 'Мои заказы', icon: '📋' },
-    { id: 'users', label: 'Пользователи', icon: '👥' },
-    { id: 'events', label: 'События', icon: '🔔' },
-    { id: 'health', label: 'Состояние', icon: '❤️' },
+  const filteredProducts = searchQuery.trim()
+    ? products.filter((p) => p.name.toLowerCase().includes(searchQuery.trim().toLowerCase()))
+    : products;
+
+  const tabs = [
+    { id: 'catalog', label: 'Каталог' },
+    { id: 'orders', label: 'Мои заказы' },
+    { id: 'users', label: 'Пользователи' },
+    { id: 'events', label: 'События' },
+    { id: 'health', label: 'Состояние системы' },
   ];
 
   return (
     <div className="app">
-      <header className="header">
-        <div className="header-inner">
-          <button type="button" className="logo" onClick={() => setActiveTab('catalog')} aria-label="На главную">
-            <span className="logo-icon">🛒</span>
-            <span className="logo-text">Маркетплейс</span>
+      {/* Верхняя панель */}
+      <header className="topbar">
+        <div className="topbar-inner">
+          <button type="button" className="logo" onClick={() => setActiveTab('catalog')}>
+            <div className="logo-icon">🛒</div>
+            <span className="logo-text">ТехноМаркет</span>
           </button>
-          <nav className={`nav ${menuOpen ? 'nav-open' : ''}`}>
-            {nav.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                className={`nav-link ${activeTab === t.id ? 'nav-link-active' : ''}`}
-                onClick={() => { setActiveTab(t.id); setMenuOpen(false); }}
-              >
-                <span className="nav-icon">{t.icon}</span>
-                {t.label}
-              </button>
-            ))}
-          </nav>
-          <div className="header-actions">
+          <div className="search-wrap">
+            <span className="search-icon" aria-hidden>🔍</span>
+            <input
+              type="search"
+              className="search-input"
+              placeholder="Поиск товаров..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Поиск"
+            />
+          </div>
+          <a href="tel:+78001234567" className="topbar-phone">8 800 123-45-67</a>
+          <button type="button" className="topbar-cart" onClick={() => setActiveTab('orders')}>
+            <span>📋</span> Заказы
+          </button>
+          <div className="topbar-right">
             {token ? (
-              <>
-                <span className="user-badge">{user?.username}</span>
-                <button type="button" className="btn btn-outline" onClick={handleLogout}>Выйти</button>
-              </>
+              <div className="user-bar">
+                <span className="user-name">{user?.username}</span>
+                <button type="button" className="btn-logout" onClick={handleLogout}>Выйти</button>
+              </div>
             ) : (
-              <form className="login-inline" onSubmit={handleLogin}>
-                <input
-                  value={loginForm.username}
-                  onChange={(e) => setLoginForm((f) => ({ ...f, username: e.target.value }))}
-                  placeholder="Логин"
-                  className="input-inline"
-                />
-                <input
-                  type="password"
-                  value={loginForm.password}
-                  onChange={(e) => setLoginForm((f) => ({ ...f, password: e.target.value }))}
-                  placeholder="Пароль"
-                  className="input-inline"
-                />
-                <button type="submit" className="btn btn-primary">Войти</button>
-              </form>
+              <button type="button" className="btn-login" onClick={() => setLoginModalOpen(true)}>
+                Войти
+              </button>
             )}
           </div>
-          <button type="button" className="menu-toggle" onClick={() => setMenuOpen(!menuOpen)} aria-label="Меню">
-            {menuOpen ? '✕' : '☰'}
-          </button>
         </div>
       </header>
 
+      {/* Вкладки навигации */}
+      <nav className="nav-bar">
+        <div className="nav-inner">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={`nav-tab ${activeTab === t.id ? 'nav-tab-active' : ''}`}
+              onClick={() => setActiveTab(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </nav>
+
       {error && (
-        <div className="banner banner-error" role="alert">
+        <div className="banner-error" role="alert">
           {error}
           <button type="button" className="banner-close" onClick={() => setError('')}>×</button>
         </div>
       )}
 
+      {/* Промо-баннер (только на каталоге) */}
       {activeTab === 'catalog' && (
-        <>
-          <section className="hero">
-            <div className="hero-bg" style={{ backgroundImage: `url(${HERO_IMAGE})` }} />
-            <div className="hero-overlay" />
-            <div className="hero-content">
-              <h1 className="hero-title">Товары и заказы</h1>
-              <p className="hero-subtitle">Демо-приложение на микросервисах. Каталог, заказы и события в одном месте.</p>
-              <button type="button" className="btn btn-hero" onClick={loadProducts}>
-                Загрузить каталог
-              </button>
+        <section className="promo">
+          <div className="promo-text">
+            <h2>Товары по выгодным ценам</h2>
+            <p>Демо-магазин на микросервисах. Каталог, заказы и доставка.</p>
+          </div>
+          <button type="button" className="promo-btn" onClick={loadProducts}>
+            Смотреть каталог
+          </button>
+        </section>
+      )}
+
+      {/* Контент */}
+      <main className="main">
+        {activeTab === 'catalog' && (
+          <>
+            <div className="section-actions">
+              <h2 className="section-title">Каталог товаров</h2>
+              <button type="button" className="btn btn-secondary" onClick={loadProducts}>Обновить</button>
+            </div>
+            <div className="product-grid">
+              {filteredProducts.map((p) => (
+                <article key={p.id} className="product-card">
+                  <div className="product-card-image-wrap">
+                    <ProductImage id={p.id} name={p.name} />
+                    {p.stock > 0 && p.stock <= 5 && (
+                      <span className="product-card-badge">Осталось {p.stock}</span>
+                    )}
+                  </div>
+                  <div className="product-card-body">
+                    <h3 className="product-card-title">{p.name}</h3>
+                    <p className="product-card-price">{Number(p.price).toFixed(0)} ₽</p>
+                    <p className="product-card-stock">В наличии: {p.stock} шт.</p>
+                    {token ? (
+                      <form onSubmit={(e) => handleCreateOrder(e, p.id, 1, 1)}>
+                        <button type="submit" className="product-card-btn" disabled={p.stock < 1}>
+                          В корзину
+                        </button>
+                      </form>
+                    ) : (
+                      <button type="button" className="product-card-btn" onClick={() => setLoginModalOpen(true)}>
+                        Войти, чтобы заказать
+                      </button>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+            {products.length === 0 && (
+              <p className="empty-state">
+                Каталог пуст. Нажмите «Смотреть каталог» или «Обновить».
+                <br />
+                <button type="button" className="btn btn-primary" onClick={loadProducts}>Загрузить каталог</button>
+              </p>
+            )}
+            {products.length > 0 && filteredProducts.length === 0 && (
+              <p className="empty-state">По запросу «{searchQuery}» ничего не найдено.</p>
+            )}
+          </>
+        )}
+
+        {activeTab === 'orders' && (
+          <section>
+            <h2 className="section-title">Мои заказы</h2>
+            {token && (
+              <form className="form-row" onSubmit={(e) => handleCreateOrder(e, null)}>
+                <label>User ID <input type="number" min="1" value={orderForm.user_id} onChange={(e) => setOrderForm((f) => ({ ...f, user_id: +e.target.value }))} className="input-narrow" /></label>
+                <label>Товар ID <input type="number" min="1" value={orderForm.product_id} onChange={(e) => setOrderForm((f) => ({ ...f, product_id: +e.target.value }))} className="input-narrow" /></label>
+                <label>Кол-во <input type="number" min="1" value={orderForm.quantity} onChange={(e) => setOrderForm((f) => ({ ...f, quantity: +e.target.value }))} className="input-narrow" /></label>
+                <button type="submit" className="btn btn-primary">Оформить заказ</button>
+              </form>
+            )}
+            <button type="button" className="btn btn-secondary" onClick={loadOrders}>Обновить</button>
+            <div className="table-wrap">
+              <table className="table">
+                <thead><tr><th>№</th><th>Пользователь</th><th>Товар</th><th>Кол-во</th><th>Статус</th></tr></thead>
+                <tbody>
+                  {orders.map((o) => (
+                    <tr key={o.id}><td>{o.id}</td><td>{o.user_id}</td><td>{o.product_id}</td><td>{o.quantity}</td><td>{o.status}</td></tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </section>
+        )}
 
-          <main className="main">
-            <section className="section">
-              <div className="section-head">
-                <h2 className="section-title">Каталог товаров</h2>
-                <button type="button" className="btn btn-secondary" onClick={loadProducts}>Обновить</button>
+        {activeTab === 'users' && (
+          <section>
+            <h2 className="section-title">Пользователи</h2>
+            <button type="button" className="btn btn-secondary" onClick={loadUsers}>Обновить</button>
+            <div className="table-wrap">
+              <table className="table">
+                <thead><tr><th>ID</th><th>Логин</th><th>Email</th></tr></thead>
+                <tbody>
+                  {users.map((u) => (
+                    <tr key={u.id}><td>{u.id}</td><td>{u.username}</td><td>{u.email || '—'}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'events' && (
+          <section>
+            <h2 className="section-title">События системы</h2>
+            <button type="button" className="btn btn-secondary" onClick={loadEvents}>Обновить</button>
+            <ul className="event-list">
+              {events.slice(0, 25).map((e, i) => (
+                <li key={i} className="event-item">{e.type || 'event'} · {e.at && new Date(e.at).toLocaleString()} — {JSON.stringify(e)}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {activeTab === 'health' && (
+          <section>
+            <h2 className="section-title">Состояние сервисов</h2>
+            <button type="button" className="btn btn-secondary" onClick={() => API.get('/health').then((r) => setHealth(r.data))}>Обновить</button>
+            <pre className="health-json">{JSON.stringify(health, null, 2)}</pre>
+          </section>
+        )}
+      </main>
+
+      {/* Модальное окно входа */}
+      {loginModalOpen && (
+        <div className="modal-overlay" onClick={() => setLoginModalOpen(false)} role="dialog" aria-modal="true">
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Вход в аккаунт</h3>
+            <form onSubmit={handleLogin}>
+              <div className="form-group">
+                <label>Логин</label>
+                <input
+                  type="text"
+                  value={loginForm.username}
+                  onChange={(e) => setLoginForm((f) => ({ ...f, username: e.target.value }))}
+                  autoComplete="username"
+                />
               </div>
-              <div className="product-grid">
-                {products.map((p) => (
-                  <article key={p.id} className="product-card">
-                    <div className="product-card-image-wrap">
-                      <ProductImage id={p.id} name={p.name} />
-                      <span className="product-card-badge">В наличии: {p.stock}</span>
-                    </div>
-                    <div className="product-card-body">
-                      <h3 className="product-card-title">{p.name}</h3>
-                      <p className="product-card-price">{Number(p.price).toFixed(2)} ₽</p>
-                      {token && (
-                        <form onSubmit={(e) => handleCreateOrder(e, p.id, 1, 1)} className="product-card-form">
-                          <button type="submit" className="btn btn-primary btn-block">Заказать</button>
-                        </form>
-                      )}
-                    </div>
-                  </article>
-                ))}
+              <div className="form-group">
+                <label>Пароль</label>
+                <input
+                  type="password"
+                  value={loginForm.password}
+                  onChange={(e) => setLoginForm((f) => ({ ...f, password: e.target.value }))}
+                  autoComplete="current-password"
+                />
               </div>
-              {products.length === 0 && (
-                <p className="empty-state">Нажмите «Загрузить каталог» или «Обновить», чтобы показать товары.</p>
-              )}
-            </section>
-          </main>
-        </>
+              <div className="modal-actions">
+                <button type="button" className="btn-close-modal" onClick={() => setLoginModalOpen(false)}>Отмена</button>
+                <button type="submit" className="btn btn-primary">Войти</button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
-      {activeTab !== 'catalog' && (
-        <main className="main main-inner">
-          {activeTab === 'orders' && (
-            <section className="section card">
-              <h2 className="section-title">Мои заказы</h2>
-              {token && (
-                <form className="form-block" onSubmit={(e) => handleCreateOrder(e, null)}>
-                  <div className="form-row">
-                    <label>User ID <input type="number" min="1" value={orderForm.user_id} onChange={(e) => setOrderForm((f) => ({ ...f, user_id: +e.target.value }))} className="input-narrow" /></label>
-                    <label>Product ID <input type="number" min="1" value={orderForm.product_id} onChange={(e) => setOrderForm((f) => ({ ...f, product_id: +e.target.value }))} className="input-narrow" /></label>
-                    <label>Кол-во <input type="number" min="1" value={orderForm.quantity} onChange={(e) => setOrderForm((f) => ({ ...f, quantity: +e.target.value }))} className="input-narrow" /></label>
-                    <button type="submit" className="btn btn-primary">Создать заказ</button>
-                  </div>
-                </form>
-              )}
-              <button type="button" className="btn btn-secondary" onClick={loadOrders}>Обновить</button>
-              <div className="table-wrap">
-                <table className="table">
-                  <thead><tr><th>ID</th><th>User</th><th>Товар</th><th>Кол-во</th><th>Статус</th></tr></thead>
-                  <tbody>
-                    {orders.map((o) => (
-                      <tr key={o.id}><td>{o.id}</td><td>{o.user_id}</td><td>{o.product_id}</td><td>{o.quantity}</td><td>{o.status}</td></tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          )}
-
-          {activeTab === 'users' && (
-            <section className="section card">
-              <h2 className="section-title">Пользователи</h2>
-              <button type="button" className="btn btn-secondary" onClick={loadUsers}>Обновить</button>
-              <div className="table-wrap">
-                <table className="table">
-                  <thead><tr><th>ID</th><th>Логин</th><th>Email</th></tr></thead>
-                  <tbody>
-                    {users.map((u) => (
-                      <tr key={u.id}><td>{u.id}</td><td>{u.username}</td><td>{u.email || '—'}</td></tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          )}
-
-          {activeTab === 'events' && (
-            <section className="section card">
-              <h2 className="section-title">События (логи)</h2>
-              <button type="button" className="btn btn-secondary" onClick={loadEvents}>Обновить</button>
-              <ul className="event-list">
-                {events.slice(0, 20).map((e, i) => (
-                  <li key={i} className="event-item">{e.type || 'event'} {e.at && new Date(e.at).toLocaleString()} {JSON.stringify(e)}</li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {activeTab === 'health' && (
-            <section className="section card">
-              <h2 className="section-title">Состояние сервисов</h2>
-              <button type="button" className="btn btn-secondary" onClick={() => API.get('/health').then((r) => setHealth(r.data))}>Обновить</button>
-              <pre className="health-json">{JSON.stringify(health, null, 2)}</pre>
-            </section>
-          )}
-        </main>
-      )}
-
+      {/* Подвал */}
       <footer className="footer">
         <div className="footer-inner">
-          <div className="footer-col">
-            <h4>Каталог</h4>
-            <button type="button" className="footer-link" onClick={() => setActiveTab('catalog')}>Товары</button>
-          </div>
-          <div className="footer-col">
-            <h4>Аккаунт</h4>
-            <button type="button" className="footer-link" onClick={() => setActiveTab('orders')}>Заказы</button>
-          </div>
-          <div className="footer-col">
-            <h4>Демо</h4>
-            <span className="footer-muted">Микросервисы · OpenShift/K8s</span>
+          <div className="footer-grid">
+            <div className="footer-col">
+              <h4>Магазин</h4>
+              <button type="button" className="footer-link" onClick={() => setActiveTab('catalog')}>Каталог</button>
+              <button type="button" className="footer-link" onClick={() => setActiveTab('orders')}>Заказы</button>
+            </div>
+            <div className="footer-col">
+              <h4>Помощь</h4>
+              <span className="footer-link" style={{ cursor: 'default' }}>8 800 123-45-67</span>
+            </div>
+            <div className="footer-col">
+              <h4>Демо</h4>
+              <span className="footer-link" style={{ cursor: 'default', color: '#6e6e73' }}>Микросервисы · OpenShift</span>
+            </div>
+            <div className="footer-col">
+              <h4>Аккаунт</h4>
+              {token ? (
+                <button type="button" className="footer-link" onClick={handleLogout}>Выйти</button>
+              ) : (
+                <button type="button" className="footer-link" onClick={() => setLoginModalOpen(true)}>Войти</button>
+              )}
+            </div>
           </div>
           <div className="footer-bottom">
-            <span>© Маркетплейс — учебный проект</span>
+            © ТехноМаркет — учебный проект. Демо микросервисной архитектуры.
           </div>
         </div>
       </footer>
